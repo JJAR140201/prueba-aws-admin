@@ -107,3 +107,5 @@
 ### Alta Disponibilidad:
 - **RDS Multi-AZ** asegura redundancia en caso de fallas.
 - El grupo de autoescalado garantiza que las instancias EC2 se ajusten según la demanda.
+
+![Arquitectura de la Aplicación](./Arquitectura.png)
