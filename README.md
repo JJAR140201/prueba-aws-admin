@@ -1,121 +1,109 @@
 # Solución de problemas comunes en AWS
 
-## Problema 1: Una instancia EC2 no puede conectarse a Internet
+## Sección 1: Preguntas teóricas
 
-### Posibles causas y soluciones:
+### ¿Cuál es la diferencia entre una instancia EC2 con almacenamiento EBS y una con almacenamiento efímero?
+- **EBS (Elastic Block Store)**: Es un almacenamiento persistente que permanece disponible incluso después de detener o terminar la instancia EC2. Se utiliza para guardar datos importantes y a largo plazo.
+  - **Caso de uso**: Bases de datos, sistemas de archivos y almacenamiento de aplicaciones.
+- **Almacenamiento efímero (Instance Store)**: Es almacenamiento temporal que se pierde cuando la instancia EC2 se detiene, se reinicia o se termina. Ofrece un rendimiento más rápido que EBS.
+  - **Caso de uso**: Almacenamiento temporal para datos que pueden reconstruirse, como cachés o datos intermedios.
 
-#### 1. La instancia no tiene una dirección IP pública:
-Muchas veces, el problema ocurre porque la instancia no tiene asignada una IP pública. Para verificarlo, ve a la consola de **EC2**, busca tu instancia y revisa si tiene una IP pública en la columna correspondiente. 
+### Explica los niveles de almacenamiento de S3 y un caso de uso para cada uno.
+1. **S3 Standard**:
+   - Almacenamiento de alta durabilidad y baja latencia para datos a los que se accede frecuentemente.
+   - **Caso de uso**: Sitios web, aplicaciones móviles y archivos dinámicos.
+2. **S3 Standard-IA (Infrequent Access)**:
+   - Almacenamiento para datos a los que se accede menos frecuentemente pero que necesitan estar disponibles de inmediato.
+   - **Caso de uso**: Copias de seguridad y recuperación de desastres.
+3. **S3 One Zone-IA**:
+   - Similar a Standard-IA pero almacenado en una sola zona de disponibilidad, con menor costo.
+   - **Caso de uso**: Datos replicables o secundarios.
+4. **S3 Glacier**:
+   - Almacenamiento de bajo costo diseñado para archivado de datos a largo plazo.
+   - **Caso de uso**: Registros legales o datos históricos que rara vez se consultan.
+5. **S3 Glacier Deep Archive**:
+   - Nivel más económico para almacenamiento a largo plazo con accesos muy esporádicos.
+   - **Caso de uso**: Datos de archivo que necesitan retención durante años.
 
-- **Solución**: Si no tiene una IP pública:
-  1. Ve a **Elastic IPs** en la consola de EC2.
-  2. Asigna una nueva Elastic IP a tu instancia.
+### ¿Qué es un Security Group en AWS y cómo difiere de una NACL?
+- **Security Group**:
+  - Es un firewall virtual que controla el tráfico entrante y saliente de las instancias EC2.
+  - Funciona a nivel de instancia y evalúa el tráfico permitido o denegado.
+  - Es **stateful**, es decir, las reglas de entrada aplican automáticamente al tráfico de salida correspondiente.
+- **NACL (Network Access Control List)**:
+  - Es un firewall a nivel de subnet que controla el tráfico entrante y saliente.
+  - Es **stateless**, lo que significa que necesitas configurar reglas explícitas para tráfico de entrada y salida por separado.
+  - Permite o deniega tráfico a nivel de red.
+  
+**Diferencia clave**: Los Security Groups operan a nivel de instancia, mientras que las NACL operan a nivel de subnet.
 
-#### 2. El grupo de seguridad no permite tráfico saliente (outbound):
-A veces, el grupo de seguridad bloquea el tráfico saliente. Para solucionarlo:
-1. Ve al grupo de seguridad asociado a tu instancia.
-2. Asegúrate de que permita el tráfico saliente a **0.0.0.0/0** en los puertos **80 (HTTP)** y **443 (HTTPS)**.
+### Describe cómo funciona AWS Auto Scaling y sus beneficios.
+- **Funcionamiento**:
+  - AWS Auto Scaling ajusta automáticamente el número de instancias EC2 según las métricas definidas, como el uso de CPU, tráfico de red o eventos personalizados.
+  - Configuras un grupo de autoescalado (Auto Scaling Group) que incluye reglas de escalado (hacia arriba o abajo) basadas en la demanda.
+- **Beneficios**:
+  1. **Alta disponibilidad**: Garantiza que las aplicaciones permanezcan operativas incluso con cambios en la carga de trabajo.
+  2. **Optimización de costos**: Escala hacia abajo para reducir costos cuando la demanda es baja.
+  3. **Escalabilidad automática**: Acomoda cambios en la carga de trabajo sin intervención manual.
+  4. **Integración fácil**: Funciona bien con otros servicios como Elastic Load Balancer (ELB) para distribuir el tráfico entre instancias.
 
-- **Solución**: Agrega una regla como esta:
-    ```
-    Tipo: All traffic
-    Protocolo: All
-    Rango de puertos: All
-    Destino: 0.0.0.0/0
-    ```
+---
 
-#### 3. La instancia no está en una Subnet con una Gateway de Internet:
-Si la instancia está en una subnet que no tiene una Gateway de Internet asociada, no podrá acceder a Internet.
+## Sección 2: Solución de problemas
 
-- **Solución**: Ve a la consola de **VPC**, verifica si la subnet tiene una tabla de rutas asociada con una Internet Gateway. Si no es así:
-  1. Configura una **Internet Gateway** y asóciala a tu VPC.
-  2. Modifica la tabla de rutas para que incluya:
+### Problema 1: Una instancia EC2 no puede conectarse a Internet
+
+#### Posibles causas y soluciones:
+
+1. **La instancia no tiene una dirección IP pública**:
+   - Muchas veces, el problema ocurre porque la instancia no tiene asignada una IP pública. Para verificarlo, ve a la consola de **EC2**, busca tu instancia y revisa si tiene una IP pública en la columna correspondiente. 
+   - **Solución**: Si no tiene una IP pública:
+     1. Ve a **Elastic IPs** en la consola de EC2.
+     2. Asigna una nueva Elastic IP a tu instancia.
+
+2. **El grupo de seguridad no permite tráfico saliente (outbound)**:
+   - A veces, el grupo de seguridad bloquea el tráfico saliente. Para solucionarlo:
+     1. Ve al grupo de seguridad asociado a tu instancia.
+     2. Asegúrate de que permita el tráfico saliente a **0.0.0.0/0** en los puertos **80 (HTTP)** y **443 (HTTPS)**.
+   - **Solución**: Agrega una regla como esta:
      ```
+     Tipo: All traffic
+     Protocolo: All
+     Rango de puertos: All
      Destino: 0.0.0.0/0
-     Target: Internet Gateway
      ```
 
-#### 4. Firewall local en la instancia:
-Si todo lo anterior está configurado correctamente, revisa las reglas del firewall dentro de la instancia (como `iptables`).
+3. **La instancia no está en una Subnet con una Gateway de Internet**:
+   - Si la instancia está en una subnet que no tiene una Gateway de Internet asociada, no podrá acceder a Internet.
+   - **Solución**: Ve a la consola de **VPC**, verifica si la subnet tiene una tabla de rutas asociada con una Internet Gateway. Si no es así:
+     1. Configura una **Internet Gateway** y asóciala a tu VPC.
+     2. Modifica la tabla de rutas para que incluya:
+        ```
+        Destino: 0.0.0.0/0
+        Target: Internet Gateway
+        ```
 
-- **Solución**: Asegúrate de que permita tráfico saliente.
-
----
-
-## Problema 2: Un bucket S3 configurado para acceso público devuelve un error 403
-
-### Posibles causas y soluciones:
-
-#### 1. La política del bucket no permite acceso público:
-Este es un problema común. Ve a la consola de **S3**, revisa la pestaña **Permissions** y verifica la política del bucket.
-
-- **Solución**: Usa una política similar a esta, reemplazando `<bucket-name>` con el nombre de tu bucket:
-    ```json
-    {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::<bucket-name>/*"
-            }
-        ]
-    }
-    ```
-
-#### 2. El Bloqueo de Acceso Público está activado:
-A veces, el acceso público está bloqueado en la configuración del bucket. Para solucionarlo:
-1. Ve a la pestaña **Permissions** en la consola de S3.
-2. Desactiva la opción **"Block all public access"** si está habilitada.
-
-#### 3. La ACL del objeto no permite acceso público:
-Si todo lo anterior está bien configurado, verifica las ACLs del objeto específico. Ve a la consola de S3, selecciona un archivo y revisa sus permisos en **Access control list (ACL)**.
-
-- **Solución**: Asegúrate de que el archivo tenga permisos de lectura pública.
-
-#### 4. Configuración de endpoint privado:
-Si el bucket está asociado a un endpoint de VPC, puede interferir con el acceso público.
-
-- **Solución**: Ajusta las políticas de acceso para permitir solicitudes externas.
+4. **Firewall local en la instancia**:
+   - Si todo lo anterior está configurado correctamente, revisa las reglas del firewall dentro de la instancia (como `iptables`).
+   - **Solución**: Asegúrate de que permita tráfico saliente.
 
 ---
 
-## Problema 3: Una función Lambda tarda demasiado en ejecutarse
+## Sección 3: Explicación de la arquitectura
 
-### Posibles causas y soluciones:
+### Frontend:
+- Los usuarios interactúan con el sitio web.
+- **CloudFront (CDN)** distribuye el contenido para mejorar la velocidad de carga y manejar tráfico global.
 
-#### 1. Problemas de red (latencia alta):
-Si la función Lambda accede a recursos externos como RDS, API o S3, puede haber latencia en las conexiones.
+### Backend:
+- **ALB (Application Load Balancer)** distribuye las solicitudes entre las instancias EC2.
+- **Instancias EC2** manejan la lógica de la aplicación y se escalan automáticamente mediante un grupo de autoescalado.
 
-- **Solución**: 
-  - Asegúrate de que Lambda esté en la misma región que los recursos.
-  - Configura Lambda en la misma VPC que los recursos que está utilizando.
+### Almacenamiento:
+- **S3** almacena imágenes y archivos estáticos.
+- **RDS (Multi-AZ)** sirve como base de datos principal para datos estructurados.
+- **DynamoDB** se utiliza para almacenamiento de sesiones, que es rápido y escalable.
 
-#### 2. Configuración inadecuada de memoria:
-Lambda asigna más CPU cuando se le configura más memoria.
-
-- **Solución**: Incrementa la memoria asignada a la función Lambda desde la consola.
-
-#### 3. Código no optimizado:
-El código puede estar procesando datos innecesariamente lento o con demasiados bucles.
-
-- **Solución**:
-  - Optimiza el código.
-  - Usa **batch processing** si estás procesando múltiples objetos.
-  - Reutiliza conexiones persistentes, como a bases de datos.
-
-#### 4. Cold starts (inicio en frío):
-Si Lambda no se ha ejecutado recientemente, puede tardar más en inicializarse.
-
-- **Solución**: Usa **Provisioned Concurrency** para mantener la función "caliente".
-
-#### 5. Retrasos al consultar RDS:
-Si Lambda tarda en conectarse a la base de datos RDS, el problema podría estar en el manejo de conexiones.
-
-- **Solución**: Usa un pool de conexiones en Lambda y verifica que RDS esté configurado para aceptar múltiples conexiones simultáneas.
-
-#### 6. Errores silenciosos:
-Si hay errores en el código que no se capturan, Lambda puede parecer más lento.
-
-- **Solución**: Agrega logs en puntos clave para rastrear problemas.
+### Alta Disponibilidad:
+- **RDS Multi-AZ** asegura redundancia en caso de fallas.
+- El grupo de autoescalado garantiza que las instancias EC2 se ajusten según la demanda.
